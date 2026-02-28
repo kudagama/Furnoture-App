@@ -15,6 +15,7 @@ public class DesignCanvas extends JPanel {
     private Color wallColor = new Color(245, 245, 250);
     private boolean applyShadows = true;
     private boolean is3DMode = false;
+    private boolean isWireframeMode = false;
     private double viewRotation = 0;
     
     private int resizingHandle = 0;
@@ -275,6 +276,12 @@ public class DesignCanvas extends JPanel {
     public void setItems(ArrayList<FurnitureItem> items) { this.items = items; }
     public Color getWallColor() { return wallColor; }
     public boolean isApplyShadows() { return applyShadows; }
+    
+    public void setWireframeMode(boolean wireframe) {
+        this.isWireframeMode = wireframe;
+        repaint();
+    }
+    public boolean isWireframeMode() { return isWireframeMode; }
 
     public void saveStateToUndo() {
         try {
@@ -437,12 +444,19 @@ public class DesignCanvas extends JPanel {
                         shadeC = new Color((r+255)/2, (gCol+100)/2, (bCol+100)/2, f.color.getAlpha());
                     }
                     
-                    g2d.setColor(shadeC);
-                    g2d.fillPolygon(f.isoX, f.isoY, 4);
-                    
-                    if (applyShadows && f.color != wallColor) {
-                        g2d.setColor(new Color(0, 0, 0, 40));
+                    if(isWireframeMode) {
+                        g2d.setColor(new Color(0, 255, 255, 180)); 
+                        g2d.setStroke(new BasicStroke(2));
                         g2d.drawPolygon(f.isoX, f.isoY, 4);
+                        g2d.setStroke(new BasicStroke(1));
+                    } else {
+                        g2d.setColor(shadeC);
+                        g2d.fillPolygon(f.isoX, f.isoY, 4);
+                        
+                        if (applyShadows && f.color != wallColor) {
+                            g2d.setColor(new Color(0, 0, 0, 40));
+                            g2d.drawPolygon(f.isoX, f.isoY, 4);
+                        }
                     }
                 }
             }

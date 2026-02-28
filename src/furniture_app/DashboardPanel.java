@@ -247,7 +247,16 @@ public class DashboardPanel extends JPanel {
         chkShadow.setFocusPainted(false);
         chkShadow.addActionListener(e -> canvas.setApplyShadows(chkShadow.isSelected()));
         
+        JCheckBox chkWireframe = new JCheckBox(" 3D Wireframe Mode", false);
+        chkWireframe.setBackground(PANEL_BG);
+        chkWireframe.setFont(labelFont);
+        chkWireframe.setForeground(TEXT_MAIN);
+        chkWireframe.setFocusPainted(false);
+        chkWireframe.addActionListener(e -> canvas.setWireframeMode(chkWireframe.isSelected()));
+        
         globalPanel.add(chkShadow);
+        globalPanel.add(Box.createVerticalStrut(10));
+        globalPanel.add(chkWireframe);
         
         customToolsPanel.add(propPanel);
         customToolsPanel.add(Box.createVerticalStrut(20));
