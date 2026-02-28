@@ -185,6 +185,7 @@ public class FurnitureItem implements Serializable {
         public Color color;
         public double depth;
         public boolean isSelected;
+        public boolean isFloor = false;
 
         @Override
         public int compareTo(Face3D o) {

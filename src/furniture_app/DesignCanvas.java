@@ -3,6 +3,7 @@ package furniture_app;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -425,12 +426,20 @@ public class DesignCanvas extends JPanel {
             double cosV = Math.cos(radView);
             double sinV = Math.sin(radView);
             
+            double distance = 1000;
+            double height = 700;
+            double focal = 1200;
+            double L = Math.sqrt(distance*distance + height*height);
+            double upY = height / L;
+            double upZ = -distance / L;
+            double fwdY = distance / L;
+            double fwdZ = -height / L;
+            
             double[][] floorV = {
                 {0, 0, 0}, {rw, 0, 0}, {rw, rl, 0}, {0, rl, 0}
             };
             FurnitureItem.Face3D floorFace = new FurnitureItem.Face3D();
             floorFace.color = wallColor;
-            double fDepth = 0;
             for(int j=0; j<4; j++) {
                 double rwx = floorV[j][0] - roomCx;
                 double rwy = floorV[j][1] - roomCy;
@@ -439,51 +448,141 @@ public class DesignCanvas extends JPanel {
                 floorFace.camX[j] = camX;
                 floorFace.camY[j] = camY;
                 floorFace.camZ[j] = 0;
-                floorFace.isoX[j] = ox + (int)((camX - camY) * 0.866);
-                floorFace.isoY[j] = oy + (int)((camX + camY) * 0.5);
+                
+                double viewX = camX;
+                double viewY = (camY + distance) * upY + (0 - height) * upZ;
+                double viewZ = (camY + distance) * fwdY + (0 - height) * fwdZ;
+                
+                if (viewZ > 1) {
+                    floorFace.isoX[j] = ox + (int)(focal * viewX / viewZ);
+                    floorFace.isoY[j] = oy - (int)(focal * viewY / viewZ);
+                }
             }
             floorFace.depth = -999999.0;
+            floorFace.isFloor = true;
             allFaces.add(floorFace);
 
             for (FurnitureItem item : items) {
                 allFaces.addAll(item.get3DFaces(ox, oy, roomCx, roomCy, viewRotation));
             }
             
+            // Drop shadows
+            if (applyShadows) {
+                ArrayList<FurnitureItem.Face3D> shadows = new ArrayList<>();
+                double lx = -0.5, ly = -0.7, lz = 1.0; 
+                for (FurnitureItem.Face3D f : allFaces) {
+                    if (f.isFloor) continue;
+                    FurnitureItem.Face3D shadow = new FurnitureItem.Face3D();
+                    shadow.color = new Color(0, 0, 0, 50);
+                    shadow.depth = -999998.0; 
+                    double avgDepth = 0;
+                    for (int j = 0; j < 4; j++) {
+                        double sx = f.camX[j] - f.camZ[j] * (lx / lz);
+                        double sy = f.camY[j] - f.camZ[j] * (ly / lz);
+                        double sz = 0;
+                        
+                        double viewX = sx;
+                        double viewY = (sy + distance) * upY + (sz - height) * upZ;
+                        double viewZ = (sy + distance) * fwdY + (sz - height) * fwdZ;
+                        
+                        if (viewZ > 1) {
+                            shadow.isoX[j] = ox + (int)(focal * viewX / viewZ);
+                            shadow.isoY[j] = oy - (int)(focal * viewY / viewZ);
+                        } else {
+                            shadow.isoX[j] = ox; // Default to origin if behind camera
+                            shadow.isoY[j] = oy;
+                        }
+                        avgDepth += viewZ;
+                    }
+                    shadow.depth = avgDepth / 4.0;
+                    shadows.add(shadow);
+                }
+                allFaces.addAll(shadows);
+            }
+            
             Collections.sort(allFaces);
             
+            // Pre-generate textures
+            BufferedImage woodTex = new BufferedImage(128, 128, BufferedImage.TYPE_INT_RGB);
+            Graphics2D wg = woodTex.createGraphics();
+            wg.setColor(new Color(180, 100, 40));
+            wg.fillRect(0, 0, 128, 128);
+            wg.setColor(new Color(130, 70, 20));
+            for(int k=0; k<40; k++) {
+                wg.drawLine(0, (int)(Math.random()*128), 128, (int)(Math.random()*128));
+            }
+            wg.dispose();
+            TexturePaint woodPaint = new TexturePaint(woodTex, new Rectangle(0, 0, 128, 128));
+            
+            BufferedImage floorTex = new BufferedImage(64, 64, BufferedImage.TYPE_INT_RGB);
+            Graphics2D fg = floorTex.createGraphics();
+            fg.setColor(wallColor);
+            fg.fillRect(0, 0, 64, 64);
+            fg.setColor(wallColor.darker());
+            fg.drawRect(0, 0, 32, 32);
+            fg.drawRect(32, 32, 32, 32);
+            fg.dispose();
+            TexturePaint floorPaint = new TexturePaint(floorTex, new Rectangle(0, 0, 64, 64));
+
             for (FurnitureItem.Face3D f : allFaces) {
                 double cur = (f.isoX[1] - f.isoX[0]) * (f.isoY[2] - f.isoY[1]) - (f.isoY[1] - f.isoY[0]) * (f.isoX[2] - f.isoX[1]);
-                if (cur >= 0 || f.color == wallColor) { 
-                    double v1x = f.camX[1] - f.camX[0];
-                    double v1y = f.camY[1] - f.camY[0];
-                    double v1z = f.camZ[1] - f.camZ[0];
-                    double v2x = f.camX[2] - f.camX[0];
-                    double v2y = f.camY[2] - f.camY[0];
-                    double v2z = f.camZ[2] - f.camZ[0];
-
-                    double nx = v1y * v2z - v1z * v2y;
-                    double ny = v1z * v2x - v1x * v2z;
-                    double nz = v1x * v2y - v1y * v2x;
-
-                    double len = Math.sqrt(nx*nx + ny*ny + nz*nz);
-                    if (len > 0) { nx /= len; ny /= len; nz /= len; }
-
-                    double lx = -0.5, ly = -0.5, lz = 1.0; 
-                    double llen = Math.sqrt(lx*lx + ly*ly + lz*lz);
-                    lx /= llen; ly /= llen; lz /= llen;
-
-                    double dot = nx * lx + ny * ly + nz * lz; 
-                    float factor = (float)(0.40 + 0.60 * dot);
-                    if (factor > 1.0f) factor = 1.0f;
-                    if (factor < 0.2f) factor = 0.2f;
-
-                    int r = (int)(f.color.getRed() * factor);
-                    int gCol = (int)(f.color.getGreen() * factor);
-                    int bCol = (int)(f.color.getBlue() * factor);
-                    Color shadeC = new Color(r, gCol, bCol, f.color.getAlpha());
+                if (cur >= 0 || f.color == wallColor || f.depth < -999990.0) { 
+                    Color shadeC = f.color;
                     
-                    if (f.isSelected) {
-                        shadeC = new Color((r+255)/2, (gCol+100)/2, (bCol+100)/2, f.color.getAlpha());
+                    if (f.depth > -999990.0 && f.color != wallColor) {
+                        double v1x = f.camX[1] - f.camX[0];
+                        double v1y = f.camY[1] - f.camY[0];
+                        double v1z = f.camZ[1] - f.camZ[0];
+                        double v2x = f.camX[2] - f.camX[0];
+                        double v2y = f.camY[2] - f.camY[0];
+                        double v2z = f.camZ[2] - f.camZ[0];
+
+                        double nx = v1y * v2z - v1z * v2y;
+                        double ny = v1z * v2x - v1x * v2z;
+                        double nz = v1x * v2y - v1y * v2x;
+
+                        double len = Math.sqrt(nx*nx + ny*ny + nz*nz);
+                        if (len > 0) { nx /= len; ny /= len; nz /= len; }
+
+                        // Phong Shading Model
+                        double lx = -0.5, ly = -0.7, lz = 1.0; 
+                        double llen = Math.sqrt(lx*lx + ly*ly + lz*lz);
+                        lx /= llen; ly /= llen; lz /= llen;
+
+                        double dot = nx * lx + ny * ly + nz * lz; 
+                        if (dot < 0) dot = 0;
+
+                        // Camera vector (view space roughly z)
+                        double valX = 0, valY = 1000, valZ = 700;
+                        double vlen = Math.sqrt(valX*valX + valY*valY + valZ*valZ);
+                        valX/=vlen; valY/=vlen; valZ/=vlen;
+
+                        double rx = 2 * dot * nx - lx;
+                        double ry = 2 * dot * ny - ly;
+                        double rz = 2 * dot * nz - lz;
+                        double rlen = Math.sqrt(rx*rx+ry*ry+rz*rz);
+                        if(rlen>0){ rx/=rlen; ry/=rlen; rz/=rlen; }
+
+                        double specDot = rx*-valX + ry*-valY + rz*valZ;
+                        if(specDot < 0) specDot = 0;
+                        
+                        double specular = Math.pow(specDot, 12) * 0.4;
+                        double ambient = 0.3;
+                        double diffuse = 0.6 * dot;
+                        double intensity = ambient + diffuse;
+
+                        int r = (int)(f.color.getRed() * intensity + specular * 255);
+                        int gCol = (int)(f.color.getGreen() * intensity + specular * 255);
+                        int bCol = (int)(f.color.getBlue() * intensity + specular * 255);
+                        r = Math.min(255, Math.max(0, r));
+                        gCol = Math.min(255, Math.max(0, gCol));
+                        bCol = Math.min(255, Math.max(0, bCol));
+
+                        shadeC = new Color(r, gCol, bCol, f.color.getAlpha());
+                        
+                        if (f.isSelected) {
+                            shadeC = new Color((r+255)/2, (gCol+100)/2, (bCol+100)/2, f.color.getAlpha());
+                        }
                     }
                     
                     if(isWireframeMode) {
@@ -492,12 +591,21 @@ public class DesignCanvas extends JPanel {
                         g2d.drawPolygon(f.isoX, f.isoY, 4);
                         g2d.setStroke(new BasicStroke(1));
                     } else {
-                        g2d.setColor(shadeC);
+                        // Apply Texture Paint
+                        if (f.isFloor && f.color == wallColor) {
+                            g2d.setPaint(floorPaint);
+                        } else if (f.depth > -999990.0) {
+                            g2d.setPaint(woodPaint);
+                        } else {
+                            g2d.setColor(shadeC);
+                        }
+                        
                         g2d.fillPolygon(f.isoX, f.isoY, 4);
                         
-                        if (applyShadows && f.color != wallColor) {
-                            g2d.setColor(new Color(0, 0, 0, 40));
-                            g2d.drawPolygon(f.isoX, f.isoY, 4);
+                        // Overlay Shading onto Texture
+                        if (f.depth > -999990.0 || f.isFloor) {
+                            g2d.setColor(new Color(shadeC.getRed(), shadeC.getGreen(), shadeC.getBlue(), 180));
+                            g2d.fillPolygon(f.isoX, f.isoY, 4);
                         }
                     }
                 }
