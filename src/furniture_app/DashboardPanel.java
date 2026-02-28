@@ -3,8 +3,7 @@ package furniture_app;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 
 public class DashboardPanel extends JPanel {
     private DesignCanvas canvas;
@@ -187,14 +186,29 @@ public class DashboardPanel extends JPanel {
             }
         });
 
-        ModernButton btnItemColor = new ModernButton("Pick Object Color", ACCENT_COL, Color.WHITE);
+        ModernButton btnItemColor = new ModernButton("Pick Primary Color", ACCENT_COL, Color.WHITE);
         btnItemColor.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnItemColor.setMaximumSize(new Dimension(200, 40));
         btnItemColor.addActionListener(e -> {
             FurnitureItem selected = canvas.getSelectedItem();
             if (selected != null) {
-                Color c = JColorChooser.showDialog(this, "Choose Face Color", selected.color);
+                canvas.saveStateToUndo();
+                Color c = JColorChooser.showDialog(this, "Choose Primary Color", selected.color);
                 if (c != null) { selected.color = c; canvas.repaint(); }
+            } else {
+                JOptionPane.showMessageDialog(this, "Select an item in 2D mode first!", "Notice", JOptionPane.WARNING_MESSAGE);
+            }
+        });
+        
+        ModernButton btnSecondaryColor = new ModernButton("Pick Secondary Color", new Color(70, 130, 180), Color.WHITE);
+        btnSecondaryColor.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnSecondaryColor.setMaximumSize(new Dimension(200, 40));
+        btnSecondaryColor.addActionListener(e -> {
+            FurnitureItem selected = canvas.getSelectedItem();
+            if (selected != null) {
+                canvas.saveStateToUndo();
+                Color c = JColorChooser.showDialog(this, "Choose Part/Secondary Color", selected.secondaryColor != null ? selected.secondaryColor : selected.color);
+                if (c != null) { selected.secondaryColor = c; canvas.repaint(); }
             } else {
                 JOptionPane.showMessageDialog(this, "Select an item in 2D mode first!", "Notice", JOptionPane.WARNING_MESSAGE);
             }
@@ -214,8 +228,10 @@ public class DashboardPanel extends JPanel {
         propPanel.add(lblRot);
         propPanel.add(Box.createVerticalStrut(5));
         propPanel.add(rotationSlider);
-        propPanel.add(Box.createVerticalStrut(30));
+        propPanel.add(Box.createVerticalStrut(20));
         propPanel.add(btnItemColor);
+        propPanel.add(Box.createVerticalStrut(10));
+        propPanel.add(btnSecondaryColor);
         propPanel.add(Box.createVerticalStrut(15));
         propPanel.add(btnDelete);
         
@@ -291,25 +307,34 @@ public class DashboardPanel extends JPanel {
         });
         
         ModernButton btnSave = new ModernButton("Save", new Color(45, 52, 65), TEXT_MAIN);
-        btnSave.addActionListener(e -> {
-            String[] options = {"Database", "Local File"};
-            int choice = JOptionPane.showOptionDialog(this, "Where do you want to save the design?", "Save Design",
-                    JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
-            
-            if (choice == 0) {
-                String name = JOptionPane.showInputDialog(this, "Enter Design Name to Save:", "Save to DB", JOptionPane.PLAIN_MESSAGE);
-                if (name != null && !name.trim().isEmpty()) {
-                    canvas.saveDesignToDB(name.trim());
-                }
-            } else if (choice == 1) {
-                JFileChooser jfc = new JFileChooser();
-                if(jfc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-                    java.io.File file = jfc.getSelectedFile();
-                    if (!file.getName().endsWith(".lumion")) file = new java.io.File(file.getAbsolutePath() + ".lumion");
-                    canvas.saveDesign(file);
+        Action saveAction = new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String[] options = {"Database", "Local File"};
+                int choice = JOptionPane.showOptionDialog(DashboardPanel.this, "Where do you want to save the design?", "Save Design",
+                        JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+                
+                if (choice == 0) {
+                    String name = JOptionPane.showInputDialog(DashboardPanel.this, "Enter Design Name to Save:", "Save to DB", JOptionPane.PLAIN_MESSAGE);
+                    if (name != null && !name.trim().isEmpty()) {
+                        canvas.saveDesignToDB(name.trim());
+                    }
+                } else if (choice == 1) {
+                    JFileChooser jfc = new JFileChooser();
+                    if(jfc.showSaveDialog(DashboardPanel.this) == JFileChooser.APPROVE_OPTION) {
+                        java.io.File file = jfc.getSelectedFile();
+                        if (!file.getName().endsWith(".lumion")) file = new java.io.File(file.getAbsolutePath() + ".lumion");
+                        canvas.saveDesign(file);
+                    }
                 }
             }
-        });
+        };
+        btnSave.addActionListener(saveAction);
+        
+        InputMap im = this.getInputMap(WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = this.getActionMap();
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK), "save");
+        am.put("save", saveAction);
         
         ModernButton btnLoad = new ModernButton("Load", new Color(45, 52, 65), TEXT_MAIN);
         btnLoad.addActionListener(e -> {

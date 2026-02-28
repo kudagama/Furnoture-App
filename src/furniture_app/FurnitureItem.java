@@ -13,6 +13,7 @@ public class FurnitureItem implements Serializable {
     public int originalWidth, originalHeight;
     public String type;
     public Color color;
+    public Color secondaryColor;
     public boolean isSelected = false;
     public double rotation = 0; 
     
@@ -25,6 +26,7 @@ public class FurnitureItem implements Serializable {
         this.originalWidth = width;
         this.originalHeight = height;
         this.color = color;
+        this.secondaryColor = color.brighter();
     }
 
     public void draw2D(Graphics2D g2d, boolean applyShadows) {
@@ -122,6 +124,20 @@ public class FurnitureItem implements Serializable {
             g2d.setStroke(new BasicStroke(2, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{5}, 0));
             g2d.setColor(new Color(255, 69, 0)); 
             g2d.drawRect(x - 3, y - 3, width + 6, height + 6);
+            
+            g2d.setColor(Color.WHITE);
+            g2d.setStroke(new BasicStroke(1));
+            int rS = 8;
+            g2d.fillRect(x - 4, y - 4, rS, rS);
+            g2d.fillRect(x + width - 4, y - 4, rS, rS);
+            g2d.fillRect(x + width - 4, y + height - 4, rS, rS);
+            g2d.fillRect(x - 4, y + height - 4, rS, rS);
+            g2d.setColor(Color.RED);
+            g2d.drawRect(x - 4, y - 4, rS, rS);
+            g2d.drawRect(x + width - 4, y - 4, rS, rS);
+            g2d.drawRect(x + width - 4, y + height - 4, rS, rS);
+            g2d.drawRect(x - 4, y + height - 4, rS, rS);
+
             g2d.setStroke(oldStroke);
             
             g2d.setColor(Color.BLUE);
@@ -129,6 +145,26 @@ public class FurnitureItem implements Serializable {
             g2d.drawLine(x + width/2, y - 11, x + width/2, y);
         }
         g2d.setTransform(oldTx);
+    }
+    
+    public int getResizeHandle(int px, int py) {
+        if (!isSelected) return 0;
+        double cx = x + width / 2.0;
+        double cy = y + height / 2.0;
+        double dx = px - cx;
+        double dy = py - cy;
+        double rad = Math.toRadians(-rotation);
+        double rx = dx * Math.cos(rad) - dy * Math.sin(rad);
+        double ry = dx * Math.sin(rad) + dy * Math.cos(rad);
+        
+        int rSize = 10;
+        double hw = width / 2.0;
+        double hh = height / 2.0;
+        if (rx >= -hw - rSize && rx <= -hw + rSize && ry >= -hh - rSize && ry <= -hh + rSize) return 1; 
+        if (rx >= hw - rSize && rx <= hw + rSize && ry >= -hh - rSize && ry <= -hh + rSize) return 2; 
+        if (rx >= hw - rSize && rx <= hw + rSize && ry >= hh - rSize && ry <= hh + rSize) return 3; 
+        if (rx >= -hw - rSize && rx <= -hw + rSize && ry >= hh - rSize && ry <= hh + rSize) return 4; 
+        return 0;
     }
 
     public static class Face3D implements Comparable<Face3D> {
@@ -238,22 +274,22 @@ public class FurnitureItem implements Serializable {
             case "Dining Table":
                 double legW = Math.min(6, Math.min(w, d) * 0.1);
                 double tableH = 35;
-                Color legCol = new Color(60, 40, 25);
+                Color legCol = color;
                 parts.add(new Box3D(-hw + 2, -hd + 2, 0, legW, legW, tableH, legCol));
                 parts.add(new Box3D(hw - legW - 2, -hd + 2, 0, legW, legW, tableH, legCol));
                 parts.add(new Box3D(-hw + 2, hd - legW - 2, 0, legW, legW, tableH, legCol));
                 parts.add(new Box3D(hw - legW - 2, hd - legW - 2, 0, legW, legW, tableH, legCol));
                 // Add a thicker top for realism
-                parts.add(new Box3D(-hw - 4, -hd - 4, tableH - 2, w + 8, d + 8, 6, color)); 
+                parts.add(new Box3D(-hw - 4, -hd - 4, tableH - 2, w + 8, d + 8, 6, secondaryColor)); 
                 // Add an elegant inner top layer
-                parts.add(new Box3D(-hw, -hd, tableH + 4, w, d, 2, color.brighter()));
+                parts.add(new Box3D(-hw, -hd, tableH + 4, w, d, 2, secondaryColor.brighter()));
                 break;
 
             case "Chair":
                 double seatH = 22;
                 double backH = 48;
                 double cLeg = Math.min(4, Math.min(w, d) * 0.1);
-                Color pColor = blend(color, Color.BLACK, 0.5f);
+                Color pColor = secondaryColor;
                 parts.add(new Box3D(-hw + 1, -hd + 1, 0, cLeg, cLeg, seatH, pColor));
                 parts.add(new Box3D(hw - cLeg - 1, -hd + 1, 0, cLeg, cLeg, seatH, pColor));
                 parts.add(new Box3D(-hw + 1, hd - cLeg - 1, 0, cLeg, cLeg, seatH, pColor));
@@ -269,11 +305,10 @@ public class FurnitureItem implements Serializable {
                 double frameH = 10;
                 double mattH = 14;
                 double headH = 35;
-                parts.add(new Box3D(-hw, -hd, 0, w, d, frameH, color.darker().darker())); // Frame
-                parts.add(new Box3D(-hw, -hd, 0, w, 6, headH, color)); // Headboard
-                Color mattressCol = new Color(245, 245, 250);
-                parts.add(new Box3D(-hw + 3, -hd + 6, frameH, w - 6, d - 9, mattH, mattressCol)); // Mattress
-                parts.add(new Box3D(-hw + 3, hd - (d*0.6), frameH + 1, w - 6, d*0.6, mattH + 2, new Color(220, 220, 230))); // Blanket
+                parts.add(new Box3D(-hw, -hd, 0, w, d, frameH, secondaryColor)); // Frame
+                parts.add(new Box3D(-hw, -hd, 0, w, 6, headH, secondaryColor)); // Headboard
+                parts.add(new Box3D(-hw + 3, -hd + 6, frameH, w - 6, d - 9, mattH, Color.WHITE)); // Mattress
+                parts.add(new Box3D(-hw + 3, hd - (d*0.6), frameH + 1, w - 6, d*0.6, mattH + 2, color)); // Blanket
                 // Two Pillows
                 parts.add(new Box3D(-hw + 10, -hd + 12, frameH + mattH, (w/2) - 15, Math.max(12, d*0.15), 6, Color.WHITE)); 
                 parts.add(new Box3D(hw - 10 - ((w/2)-15), -hd + 12, frameH + mattH, (w/2) - 15, Math.max(12, d*0.15), 6, Color.WHITE)); 
@@ -303,20 +338,19 @@ public class FurnitureItem implements Serializable {
                 double cabH = 80;
                 parts.add(new Box3D(-hw, -hd, 0, w, d, cabH, color));
                 // Add doors division
-                parts.add(new Box3D(-0.5, hd, 4, 1, 1, cabH - 8, color.darker().darker()));
+                parts.add(new Box3D(-0.5, hd, 4, 1, 1, cabH - 8, secondaryColor.darker()));
                 // Handles
                 parts.add(new Box3D(-w*0.15, hd + 1, cabH*0.6, 3, 2, 15, Color.LIGHT_GRAY));
                 parts.add(new Box3D(w*0.15 - 3, hd + 1, cabH*0.6, 3, 2, 15, Color.LIGHT_GRAY));
                 // Top rim
-                parts.add(new Box3D(-hw - 1, -hd - 1, cabH, w + 2, d + 2, 3, color.brighter()));
+                parts.add(new Box3D(-hw - 1, -hd - 1, cabH, w + 2, d + 2, 3, secondaryColor));
                 break;
 
             case "Plant":
                 double potH = 22;
-                Color potC = new Color(200, 180, 150);
-                parts.add(new Box3D(-hw + 8, -hd + 8, 0, w - 16, d - 16, potH, potC)); // Pot base
-                parts.add(new Box3D(-hw + 6, -hd + 6, potH - 4, w - 12, d - 12, 5, potC.brighter())); // Pot rim
-                Color leafC = new Color(34, 139, 34);
+                parts.add(new Box3D(-hw + 8, -hd + 8, 0, w - 16, d - 16, potH, secondaryColor)); // Pot base
+                parts.add(new Box3D(-hw + 6, -hd + 6, potH - 4, w - 12, d - 12, 5, secondaryColor.brighter())); // Pot rim
+                Color leafC = color;
                 parts.add(new Box3D(-hw + 4, -hd + 4, potH + 1, w - 8, d - 8, 10, leafC)); // Lower leaves
                 parts.add(new Box3D(-hw + 8, -hd + 8, potH + 11, w - 16, d - 16, 12, leafC.brighter())); // Mid leaves
                 parts.add(new Box3D(-2, -2, potH + 23, 4, 4, 8, leafC.brighter().brighter())); // Top leaves

@@ -6,6 +6,7 @@ import java.awt.event.*;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Stack;
 
 public class DesignCanvas extends JPanel {
     private ArrayList<FurnitureItem> items = new ArrayList<>();
@@ -16,6 +17,13 @@ public class DesignCanvas extends JPanel {
     private boolean is3DMode = false;
     private double viewRotation = 0;
     
+    private int resizingHandle = 0;
+    private int resizeStartW, resizeStartH, resizeStartX, resizeStartY, mouseStartX, mouseStartY;
+    private double originalDragRotation;
+    
+    private Stack<byte[]> undoStack = new Stack<>();
+    private Stack<byte[]> redoStack = new Stack<>();
+    
     public int roomWidthMeters = 10;
     public int roomLengthMeters = 10;
     private final int PIXELS_PER_METER = 50; 
@@ -25,6 +33,37 @@ public class DesignCanvas extends JPanel {
         setBorder(BorderFactory.createEmptyBorder());
         setFocusable(true);
         requestFocusInWindow();
+
+        InputMap im = getInputMap(WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = getActionMap();
+        
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "deleteItem");
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "deleteItem");
+        am.put("deleteItem", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (selectedItem != null) {
+                    saveStateToUndo();
+                    deleteSelected();
+                }
+            }
+        });
+
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK), "undo");
+        am.put("undo", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                undo();
+            }
+        });
+
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK), "redo");
+        am.put("redo", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                redo();
+            }
+        });
 
         addKeyListener(new KeyAdapter() {
             @Override
@@ -68,11 +107,27 @@ public class DesignCanvas extends JPanel {
                     my = (int)(rwy + roomCy);
                 }
 
+                if (!is3DMode && selectedItem != null) {
+                    resizingHandle = selectedItem.getResizeHandle(mx, my);
+                    if (resizingHandle != 0) {
+                        saveStateToUndo();
+                        resizeStartW = selectedItem.width;
+                        resizeStartH = selectedItem.height;
+                        resizeStartX = selectedItem.x;
+                        resizeStartY = selectedItem.y;
+                        mouseStartX = mx;
+                        mouseStartY = my;
+                        originalDragRotation = selectedItem.rotation;
+                        return;
+                    }
+                }
+
                 for (int i = items.size() - 1; i >= 0; i--) {
                     FurnitureItem item = items.get(i);
                     // For tall 3D items, we might need a looser hit test, but footprint mapping works for the base
                     if (item.contains(mx, my)) {
                         if (selectedItem != null) selectedItem.isSelected = false;
+                        saveStateToUndo();
                         selectedItem = item;
                         selectedItem.isSelected = true;
                         offsetX = mx - item.x;
@@ -93,6 +148,33 @@ public class DesignCanvas extends JPanel {
             @Override
             public void mouseDragged(MouseEvent e) {
                 if (selectedItem != null) {
+                    if (resizingHandle != 0) {
+                        double rad = Math.toRadians(-originalDragRotation);
+                        double cos = Math.cos(rad);
+                        double sin = Math.sin(rad);
+                        double localDx = (e.getX() - mouseStartX) * cos - (e.getY() - mouseStartY) * sin;
+                        double localDy = (e.getX() - mouseStartX) * sin + (e.getY() - mouseStartY) * cos;
+                        
+                        int newW = resizeStartW;
+                        int newH = resizeStartH;
+                        if (resizingHandle == 3) { newW += localDx * 2; newH += localDy * 2; } 
+                        else if (resizingHandle == 4) { newW -= localDx * 2; newH += localDy * 2; } 
+                        else if (resizingHandle == 2) { newW += localDx * 2; newH -= localDy * 2; } 
+                        else if (resizingHandle == 1) { newW -= localDx * 2; newH -= localDy * 2; }
+                        
+                        if (newW < 20) newW = 20;
+                        if (newH < 20) newH = 20;
+
+                        double cx = resizeStartX + resizeStartW / 2.0;
+                        double cy = resizeStartY + resizeStartH / 2.0;
+                        selectedItem.width = newW;
+                        selectedItem.height = newH;
+                        selectedItem.x = (int)(cx - newW / 2.0);
+                        selectedItem.y = (int)(cy - newH / 2.0);
+                        repaint();
+                        return;
+                    }
+
                     int mx = e.getX();
                     int my = e.getY();
                     
@@ -122,9 +204,17 @@ public class DesignCanvas extends JPanel {
                 }
             }
         });
+        
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                resizingHandle = 0;
+            }
+        });
     }
 
     public void addFurniture(String type) {
+        saveStateToUndo();
         if ("Dining Table".equals(type)) items.add(new FurnitureItem(type, 100, 100, 120, 80, new Color(139, 69, 19)));
         else if ("Chair".equals(type)) items.add(new FurnitureItem(type, 150, 150, 45, 45, new Color(70, 130, 180)));
         else if ("Modern Sofa".equals(type)) items.add(new FurnitureItem(type, 200, 100, 160, 70, new Color(105, 105, 105)));
@@ -143,6 +233,7 @@ public class DesignCanvas extends JPanel {
     }
 
     public void clearDesign() {
+        saveStateToUndo();
         items.clear();
         selectedItem = null;
         repaint();
@@ -176,9 +267,59 @@ public class DesignCanvas extends JPanel {
     public void loadDesignFromDB(String designName) {
         ArrayList<FurnitureItem> loadedItems = DBConnection.loadDesignFromDatabase(designName);
         if (loadedItems != null && !loadedItems.isEmpty()) {
+            saveStateToUndo();
             items = loadedItems;
             selectedItem = null;
             repaint();
+        }
+    }
+
+    public void saveStateToUndo() {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream(baos);
+            oos.writeObject(items);
+            oos.close();
+            undoStack.push(baos.toByteArray());
+            redoStack.clear();
+        } catch(Exception e) {}
+    }
+
+    @SuppressWarnings("unchecked")
+    public void undo() {
+        if (!undoStack.isEmpty()) {
+            try {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ObjectOutputStream oos = new ObjectOutputStream(baos);
+                oos.writeObject(items);
+                oos.close();
+                redoStack.push(baos.toByteArray());
+                
+                byte[] state = undoStack.pop();
+                ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(state));
+                items = (ArrayList<FurnitureItem>) ois.readObject();
+                selectedItem = null;
+                repaint();
+            } catch(Exception e) {}
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    public void redo() {
+        if (!redoStack.isEmpty()) {
+            try {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ObjectOutputStream oos = new ObjectOutputStream(baos);
+                oos.writeObject(items);
+                oos.close();
+                undoStack.push(baos.toByteArray());
+                
+                byte[] state = redoStack.pop();
+                ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(state));
+                items = (ArrayList<FurnitureItem>) ois.readObject();
+                selectedItem = null;
+                repaint();
+            } catch(Exception e) {}
         }
     }
 
