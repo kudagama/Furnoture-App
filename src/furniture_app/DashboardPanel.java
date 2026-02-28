@@ -284,17 +284,39 @@ public class DashboardPanel extends JPanel {
         
         ModernButton btnSave = new ModernButton("Save", new Color(45, 52, 65), TEXT_MAIN);
         btnSave.addActionListener(e -> {
-            String name = JOptionPane.showInputDialog(this, "Enter Design Name to Save:", "Save Design", JOptionPane.PLAIN_MESSAGE);
-            if (name != null && !name.trim().isEmpty()) {
-                canvas.saveDesignToDB(name.trim());
+            String[] options = {"Database", "Local File"};
+            int choice = JOptionPane.showOptionDialog(this, "Where do you want to save the design?", "Save Design",
+                    JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+            
+            if (choice == 0) {
+                String name = JOptionPane.showInputDialog(this, "Enter Design Name to Save:", "Save to DB", JOptionPane.PLAIN_MESSAGE);
+                if (name != null && !name.trim().isEmpty()) {
+                    canvas.saveDesignToDB(name.trim());
+                }
+            } else if (choice == 1) {
+                JFileChooser jfc = new JFileChooser();
+                if(jfc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+                    java.io.File file = jfc.getSelectedFile();
+                    if (!file.getName().endsWith(".lumion")) file = new java.io.File(file.getAbsolutePath() + ".lumion");
+                    canvas.saveDesign(file);
+                }
             }
         });
         
         ModernButton btnLoad = new ModernButton("Load", new Color(45, 52, 65), TEXT_MAIN);
         btnLoad.addActionListener(e -> {
-            String name = JOptionPane.showInputDialog(this, "Enter Design Name to Load:", "Load Design", JOptionPane.PLAIN_MESSAGE);
-            if (name != null && !name.trim().isEmpty()) {
-                canvas.loadDesignFromDB(name.trim());
+            String[] options = {"Database", "Local File"};
+            int choice = JOptionPane.showOptionDialog(this, "Where do you want to load the design from?", "Load Design",
+                    JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+            
+            if (choice == 0) {
+                String name = JOptionPane.showInputDialog(this, "Enter Design Name to Load:", "Load from DB", JOptionPane.PLAIN_MESSAGE);
+                if (name != null && !name.trim().isEmpty()) {
+                    canvas.loadDesignFromDB(name.trim());
+                }
+            } else if (choice == 1) {
+                JFileChooser jfc = new JFileChooser();
+                if(jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) canvas.loadDesign(jfc.getSelectedFile());
             }
         });
         

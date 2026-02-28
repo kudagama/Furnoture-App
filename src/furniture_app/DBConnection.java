@@ -15,7 +15,7 @@ public class DBConnection {
     private static final String URL = "jdbc:mysql://localhost:3306/";
     private static final String DB_NAME = "furniture_db";
     private static final String USER = "root"; // Update this if your mysql username is different
-    private static final String PASS = "";     // Update this if your mysql password is different
+    private static final String PASS = "anu1245A@";     // Update this if your mysql password is different
 
     public static Connection getConnection() {
         Connection conn = null;
