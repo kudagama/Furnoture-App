@@ -32,29 +32,89 @@ public class FurnitureItem implements Serializable {
         g2d.rotate(Math.toRadians(rotation), x + width / 2.0, y + height / 2.0);
 
         if (applyShadows) {
-            g2d.setColor(new Color(0, 0, 0, 80));
-            g2d.fillRoundRect(x + 8, y + 8, width, height, 10, 10);
+            g2d.setColor(new Color(0, 0, 0, 60));
+            g2d.fillRoundRect(x + 10, y + 10, width, height, 15, 15);
         }
 
-        g2d.setColor(color);
-        if ("Chair".equals(type) || "Plant".equals(type)) {
+        GradientPaint gp = new GradientPaint(x, y, color.brighter(), x + width, y + height, color.darker());
+        g2d.setPaint(gp);
+        
+        if ("Chair".equals(type)) {
+            g2d.fillRoundRect(x, y, width, height, 15, 15);
+            g2d.setColor(color.darker().darker());
+            g2d.drawRoundRect(x, y, width, height, 15, 15);
+            // Add backrest detail
+            GradientPaint gpBack = new GradientPaint(x, y, color, x, y + 15, color.darker().darker());
+            g2d.setPaint(gpBack);
+            g2d.fillRoundRect(x + 5, y + 5, width - 10, 15, 10, 10);
+            g2d.setColor(new Color(255, 255, 255, 50));
+            g2d.drawRoundRect(x + 6, y + 6, width - 12, 13, 8, 8);
+        } else if ("Plant".equals(type)) {
+            GradientPaint gpPlant = new GradientPaint(x, y, color.brighter(), x + width, y + height, color.darker().darker());
+            g2d.setPaint(gpPlant);
             g2d.fillOval(x, y, width, height);
-            g2d.setColor(color.darker());
+            g2d.setColor(color.darker().darker());
             g2d.drawOval(x, y, width, height);
+            // Inner leaves
+            g2d.setColor(color.brighter());
+            g2d.fillOval(x + width/4, y + height/4, width/2, height/2);
+            for(int i=0; i<360; i+=45) {
+                g2d.fillArc(x + 5, y + 5, width - 10, height - 10, i, 20);
+            }
+        } else if ("Modern Sofa".equals(type)) {
+            g2d.fillRoundRect(x, y, width, height, 10, 10);
+            g2d.setColor(color.darker().darker());
+            g2d.drawRoundRect(x, y, width, height, 10, 10);
+            // Cushions
+            GradientPaint cushionGp = new GradientPaint(x + 15, y + 15, color, x + width - 15, y + height - 15, color.darker());
+            g2d.setPaint(cushionGp);
+            g2d.fillRoundRect(x + 15, y + 15, width - 30, height - 25, 5, 5);
+            // Split cushions
+            g2d.setColor(new Color(0, 0, 0, 50));
+            g2d.drawLine(x + width/2, y + 15, x + width/2, y + height - 10);
+        } else if ("Bed".equals(type)) {
+            g2d.fillRoundRect(x, y, width, height, 8, 8);
+            g2d.setColor(color.darker());
+            g2d.drawRoundRect(x, y, width, height, 8, 8);
+            // Blanket
+            GradientPaint blanketGp = new GradientPaint(x + 5, y + height/3, Color.WHITE, x + width - 5, y + height - 5, new Color(220, 220, 230));
+            g2d.setPaint(blanketGp);
+            g2d.fillRoundRect(x + 5, y + height/4, width - 10, (height*3)/4 - 10, 5, 5);
+            // Fold in blanket
+            g2d.setColor(new Color(200, 200, 210));
+            g2d.fillRoundRect(x + 5, y + height/4, width - 10, 15, 5, 5);
+            // Pillows
+            GradientPaint pillowGp = new GradientPaint(x, y, Color.WHITE, x, y + 20, new Color(230, 230, 230));
+            g2d.setPaint(pillowGp);
+            g2d.fillRoundRect(x + 15, y + 10, width/2 - 20, height/5, 8, 8);
+            g2d.fillRoundRect(x + width/2 + 5, y + 10, width/2 - 20, height/5, 8, 8);
+            g2d.setColor(new Color(0, 0, 0, 30));
+            g2d.drawRoundRect(x + 15, y + 10, width/2 - 20, height/5, 8, 8);
+            g2d.drawRoundRect(x + width/2 + 5, y + 10, width/2 - 20, height/5, 8, 8);
+        } else if ("Dining Table".equals(type)) {
+            g2d.fillRoundRect(x, y, width, height, 15, 15);
+            g2d.setColor(color.darker().darker());
+            g2d.drawRoundRect(x, y, width, height, 15, 15);
+            // Inner wood grain or reflection
+            GradientPaint woodGp = new GradientPaint(x, y, new Color(255, 255, 255, 40), x + width, y + height, new Color(0, 0, 0, 40));
+            g2d.setPaint(woodGp);
+            g2d.fillRoundRect(x + 8, y + 8, width - 16, height - 16, 10, 10);
+            g2d.setColor(new Color(255, 255, 255, 60));
+            g2d.drawLine(x + 15, y + 15, x + width - 15, y + 15);
+        } else if ("Cabinet".equals(type)) {
+            g2d.fillRoundRect(x, y, width, height, 5, 5);
+            g2d.setColor(color.darker().darker());
+            g2d.drawRoundRect(x, y, width, height, 5, 5);
+            g2d.setColor(new Color(0, 0, 0, 80));
+            g2d.drawLine(x + width/2, y + 5, x + width/2, y + height - 5);
+            // Knobs
+            g2d.setColor(Color.LIGHT_GRAY);
+            g2d.fillOval(x + width/2 - 8, y + height/2 - 4, 6, 8);
+            g2d.fillOval(x + width/2 + 2, y + height/2 - 4, 6, 8);
         } else {
             g2d.fillRoundRect(x, y, width, height, 5, 5);
             g2d.setColor(color.darker());
             g2d.drawRoundRect(x, y, width, height, 5, 5);
-            
-            if ("Modern Sofa".equals(type)) {
-                g2d.setColor(color.darker().darker());
-                g2d.drawRect(x + 10, y + 10, width - 20, height - 20);
-            } else if ("Bed".equals(type)) {
-                g2d.setColor(Color.WHITE);
-                g2d.fillRect(x + 5, y + 5, width - 10, height/3); 
-                g2d.setColor(Color.LIGHT_GRAY);
-                g2d.drawRect(x + 5, y + 5, width - 10, height/3);
-            }
         }
         
         if (isSelected) {
@@ -137,7 +197,7 @@ public class FurnitureItem implements Serializable {
         if (applyShadows) {
             double shW = (rot == 90 || rot == 270) ? bd : bw;
             double shD = (rot == 90 || rot == 270) ? bw : bd;
-            drawIsoPolygon(g2d, offsetX, offsetY, cx - shW/2.0, cy - shD/2.0, 0, shW, shD, 0, new Color(0, 0, 0, 50));
+            drawIsoPolygon(g2d, offsetX, offsetY, cx - shW/2.0, cy - shD/2.0, 0, shW, shD, 0, new Color(0, 0, 0, 60), new Color(0, 0, 0, 10));
         }
 
         for (Box3D b : rotatedParts) {
@@ -154,61 +214,87 @@ public class FurnitureItem implements Serializable {
                 double legW = Math.min(6, Math.min(w, d) * 0.1);
                 double tableH = 35;
                 Color legCol = new Color(60, 40, 25);
-                parts.add(new Box3D(-hw, -hd, 0, legW, legW, tableH, legCol));
-                parts.add(new Box3D(hw - legW, -hd, 0, legW, legW, tableH, legCol));
-                parts.add(new Box3D(-hw, hd - legW, 0, legW, legW, tableH, legCol));
-                parts.add(new Box3D(hw - legW, hd - legW, 0, legW, legW, tableH, legCol));
-                parts.add(new Box3D(-hw - 2, -hd - 2, tableH, w + 4, d + 4, 4, color)); // Top
+                parts.add(new Box3D(-hw + 2, -hd + 2, 0, legW, legW, tableH, legCol));
+                parts.add(new Box3D(hw - legW - 2, -hd + 2, 0, legW, legW, tableH, legCol));
+                parts.add(new Box3D(-hw + 2, hd - legW - 2, 0, legW, legW, tableH, legCol));
+                parts.add(new Box3D(hw - legW - 2, hd - legW - 2, 0, legW, legW, tableH, legCol));
+                // Add a thicker top for realism
+                parts.add(new Box3D(-hw - 4, -hd - 4, tableH - 2, w + 8, d + 8, 6, color)); 
+                // Add an elegant inner top layer
+                parts.add(new Box3D(-hw, -hd, tableH + 4, w, d, 2, color.brighter()));
                 break;
 
             case "Chair":
-                double seatH = 20;
-                double backH = 45;
+                double seatH = 22;
+                double backH = 48;
                 double cLeg = Math.min(4, Math.min(w, d) * 0.1);
-                Color pColor = color.darker();
-                parts.add(new Box3D(-hw, -hd, 0, cLeg, cLeg, seatH, pColor));
-                parts.add(new Box3D(hw - cLeg, -hd, 0, cLeg, cLeg, seatH, pColor));
-                parts.add(new Box3D(-hw, hd - cLeg, 0, cLeg, cLeg, seatH, pColor));
-                parts.add(new Box3D(hw - cLeg, hd - cLeg, 0, cLeg, cLeg, seatH, pColor));
-                parts.add(new Box3D(-hw - 1, -hd - 1, seatH, w + 2, d + 2, 4, color)); // Seat
-                parts.add(new Box3D(-hw, -hd, seatH + 4, w, Math.max(4, d*0.1), backH - seatH - 4, color)); // Backrest at back
+                Color pColor = blend(color, Color.BLACK, 0.5f);
+                parts.add(new Box3D(-hw + 1, -hd + 1, 0, cLeg, cLeg, seatH, pColor));
+                parts.add(new Box3D(hw - cLeg - 1, -hd + 1, 0, cLeg, cLeg, seatH, pColor));
+                parts.add(new Box3D(-hw + 1, hd - cLeg - 1, 0, cLeg, cLeg, seatH, pColor));
+                parts.add(new Box3D(hw - cLeg - 1, hd - cLeg - 1, 0, cLeg, cLeg, seatH, pColor));
+                // Seat with a bit of cushion height
+                parts.add(new Box3D(-hw - 2, -hd - 2, seatH, w + 4, d + 4, 3, color.darker())); 
+                parts.add(new Box3D(-hw - 1, -hd - 1, seatH + 3, w + 2, d + 2, 4, color)); 
+                // Backrest with some curve
+                parts.add(new Box3D(-hw + 1, -hd - 1, seatH + 6, w - 2, 6, backH - seatH - 6, color)); 
                 break;
 
             case "Bed":
-                double frameH = 12;
-                double mattH = 10;
-                double headH = 30;
-                parts.add(new Box3D(-hw, -hd, 0, w, d, frameH, color.darker())); // Frame
-                parts.add(new Box3D(-hw + 2, -hd + 5, frameH, w - 4, d - 7, mattH, Color.WHITE)); // Mattress
-                parts.add(new Box3D(-hw, -hd, 0, w, 8, headH, color)); // Headboard
-                parts.add(new Box3D(-hw + 10, -hd + 15, frameH + mattH, w - 20, Math.max(10, d*0.15), 5, Color.LIGHT_GRAY)); // Pillow
+                double frameH = 10;
+                double mattH = 14;
+                double headH = 35;
+                parts.add(new Box3D(-hw, -hd, 0, w, d, frameH, color.darker().darker())); // Frame
+                parts.add(new Box3D(-hw, -hd, 0, w, 6, headH, color)); // Headboard
+                Color mattressCol = new Color(245, 245, 250);
+                parts.add(new Box3D(-hw + 3, -hd + 6, frameH, w - 6, d - 9, mattH, mattressCol)); // Mattress
+                parts.add(new Box3D(-hw + 3, hd - (d*0.6), frameH + 1, w - 6, d*0.6, mattH + 2, new Color(220, 220, 230))); // Blanket
+                // Two Pillows
+                parts.add(new Box3D(-hw + 10, -hd + 12, frameH + mattH, (w/2) - 15, Math.max(12, d*0.15), 6, Color.WHITE)); 
+                parts.add(new Box3D(hw - 10 - ((w/2)-15), -hd + 12, frameH + mattH, (w/2) - 15, Math.max(12, d*0.15), 6, Color.WHITE)); 
                 break;
 
             case "Modern Sofa":
-                double sSeatH = 18;
-                double sArmH = 32;
-                double sBackH = 40;
-                double armT = Math.max(8, w * 0.15);
-                parts.add(new Box3D(-hw + armT, -hd + 10, 0, w - armT*2, d - 10, sSeatH, color)); // Middle Seat
-                parts.add(new Box3D(-hw, -hd, 0, w, 10, sBackH, color.darker())); // Back rest
-                parts.add(new Box3D(-hw, -hd, 0, armT, d, sArmH, color.darker())); // Left arm
-                parts.add(new Box3D(hw - armT, -hd, 0, armT, d, sArmH, color.darker())); // Right arm
+                double sSeatH = 15;
+                double sArmH = 30;
+                double sBackH = 42;
+                double armT = Math.max(10, w * 0.15);
+                Color baseCol = Color.DARK_GRAY;
+                // Base
+                parts.add(new Box3D(-hw, -hd, 0, w, d, 4, baseCol));
+                // Left arm
+                parts.add(new Box3D(-hw, -hd, 4, armT, d, sArmH - 4, color.darker())); 
+                // Right arm
+                parts.add(new Box3D(hw - armT, -hd, 4, armT, d, sArmH - 4, color.darker())); 
+                // Back rest
+                parts.add(new Box3D(-hw + armT, -hd, 4, w - armT*2, 12, sBackH - 4, color.darker())); 
+                // Seat Cushion 1
+                parts.add(new Box3D(-hw + armT + 1, -hd + 12, 4, (w - armT*2)/2 - 1, d - 12, sSeatH + 4, color)); 
+                // Seat Cushion 2
+                parts.add(new Box3D(0, -hd + 12, 4, (w - armT*2)/2 - 1, d - 12, sSeatH + 4, color)); 
                 break;
 
             case "Cabinet":
-                double cabH = 75;
+                double cabH = 80;
                 parts.add(new Box3D(-hw, -hd, 0, w, d, cabH, color));
-                // Add tiny knobs on front face (positive y)
-                parts.add(new Box3D(-w*0.2, hd, cabH*0.6, 4, 3, 4, color.darker().darker()));
-                parts.add(new Box3D(w*0.2 - 4, hd, cabH*0.6, 4, 3, 4, color.darker().darker()));
-                // Add front face line separator to imitate doors
-                parts.add(new Box3D(-1, hd, 2, 2, 1, cabH - 4, color.darker().darker()));
+                // Add doors division
+                parts.add(new Box3D(-0.5, hd, 4, 1, 1, cabH - 8, color.darker().darker()));
+                // Handles
+                parts.add(new Box3D(-w*0.15, hd + 1, cabH*0.6, 3, 2, 15, Color.LIGHT_GRAY));
+                parts.add(new Box3D(w*0.15 - 3, hd + 1, cabH*0.6, 3, 2, 15, Color.LIGHT_GRAY));
+                // Top rim
+                parts.add(new Box3D(-hw - 1, -hd - 1, cabH, w + 2, d + 2, 3, color.brighter()));
                 break;
 
             case "Plant":
-                double potH = 20;
-                parts.add(new Box3D(-hw + 5, -hd + 5, 0, w - 10, d - 10, potH, new Color(180, 130, 90))); // Pot
-                parts.add(new Box3D(-hw, -hd, potH, w, d, 25, color)); // Leaves block
+                double potH = 22;
+                Color potC = new Color(200, 180, 150);
+                parts.add(new Box3D(-hw + 8, -hd + 8, 0, w - 16, d - 16, potH, potC)); // Pot base
+                parts.add(new Box3D(-hw + 6, -hd + 6, potH - 4, w - 12, d - 12, 5, potC.brighter())); // Pot rim
+                Color leafC = new Color(34, 139, 34);
+                parts.add(new Box3D(-hw + 4, -hd + 4, potH + 1, w - 8, d - 8, 10, leafC)); // Lower leaves
+                parts.add(new Box3D(-hw + 8, -hd + 8, potH + 11, w - 16, d - 16, 12, leafC.brighter())); // Mid leaves
+                parts.add(new Box3D(-2, -2, potH + 23, 4, 4, 8, leafC.brighter().brighter())); // Top leaves
                 break;
 
             default:
@@ -217,50 +303,66 @@ public class FurnitureItem implements Serializable {
         }
     }
 
-    private void drawBoxFaces(Graphics2D g2d, int ox, int oy, Box3D b) {
-        Color topColor = b.c;
-        Color leftColor = b.c.darker();
-        Color rightColor = b.c.darker().darker();
-        
-        // Front-left face
-        drawIsoWallX(g2d, ox, oy, b.px, b.py + b.d, b.pz, b.w, b.h, leftColor);
-        // Front-right face
-        drawIsoWallY(g2d, ox, oy, b.px + b.w, b.py, b.pz, b.d, b.h, rightColor);
-        // Top face
-        drawIsoPolygon(g2d, ox, oy, b.px, b.py, b.pz + b.h, b.w, b.d, b.pz + b.h, topColor);
+    private Color blend(Color c1, Color c2, float ratio) {
+        float r = c1.getRed() * (1 - ratio) + c2.getRed() * ratio;
+        float g = c1.getGreen() * (1 - ratio) + c2.getGreen() * ratio;
+        float b = c1.getBlue() * (1 - ratio) + c2.getBlue() * ratio;
+        return new Color((int)r, (int)g, (int)b, c1.getAlpha());
     }
 
-    private void drawIsoWallX(Graphics2D g2d, int ox, int oy, double px, double py, double pz, double w, double h, Color c) {
+    private void drawBoxFaces(Graphics2D g2d, int ox, int oy, Box3D b) {
+        Color topColor = b.c;
+        Color leftColor = blend(b.c, Color.BLACK, 0.15f);
+        Color rightColor = blend(b.c, Color.BLACK, 0.35f);
+        
+        // Front-left face
+        drawIsoWallX(g2d, ox, oy, b.px, b.py + b.d, b.pz, b.w, b.h, leftColor, blend(leftColor, Color.BLACK, 0.2f));
+        // Front-right face
+        drawIsoWallY(g2d, ox, oy, b.px + b.w, b.py, b.pz, b.d, b.h, rightColor, blend(rightColor, Color.BLACK, 0.2f));
+        // Top face
+        drawIsoPolygon(g2d, ox, oy, b.px, b.py, b.pz + b.h, b.w, b.d, b.pz + b.h, topColor, blend(topColor, Color.WHITE, 0.1f));
+    }
+
+    private void drawIsoWallX(Graphics2D g2d, int ox, int oy, double px, double py, double pz, double w, double h, Color c1, Color c2) {
         int[] xs = new int[4], ys = new int[4];
         Point p1 = getIsoPoint(px, py, pz, ox, oy);
         Point p2 = getIsoPoint(px + w, py, pz, ox, oy);
         Point p3 = getIsoPoint(px + w, py, pz + h, ox, oy);
         Point p4 = getIsoPoint(px, py, pz + h, ox, oy);
         xs[0]=p1.x; ys[0]=p1.y; xs[1]=p2.x; ys[1]=p2.y; xs[2]=p3.x; ys[2]=p3.y; xs[3]=p4.x; ys[3]=p4.y;
-        g2d.setColor(c); g2d.fillPolygon(xs, ys, 4);
-        g2d.setColor(new Color(0, 0, 0, 60)); g2d.drawPolygon(xs, ys, 4);
+        
+        GradientPaint gp = new GradientPaint(p4.x, p4.y, c1, p2.x, p2.y, c2);
+        g2d.setPaint(gp);
+        g2d.fillPolygon(xs, ys, 4);
+        g2d.setColor(new Color(0, 0, 0, 20)); g2d.drawPolygon(xs, ys, 4);
     }
 
-    private void drawIsoWallY(Graphics2D g2d, int ox, int oy, double px, double py, double pz, double d, double h, Color c) {
+    private void drawIsoWallY(Graphics2D g2d, int ox, int oy, double px, double py, double pz, double d, double h, Color c1, Color c2) {
         int[] xs = new int[4], ys = new int[4];
         Point p1 = getIsoPoint(px, py, pz, ox, oy);
         Point p2 = getIsoPoint(px, py + d, pz, ox, oy);
         Point p3 = getIsoPoint(px, py + d, pz + h, ox, oy);
         Point p4 = getIsoPoint(px, py, pz + h, ox, oy);
         xs[0]=p1.x; ys[0]=p1.y; xs[1]=p2.x; ys[1]=p2.y; xs[2]=p3.x; ys[2]=p3.y; xs[3]=p4.x; ys[3]=p4.y;
-        g2d.setColor(c); g2d.fillPolygon(xs, ys, 4);
-        g2d.setColor(new Color(0, 0, 0, 60)); g2d.drawPolygon(xs, ys, 4);
+        
+        GradientPaint gp = new GradientPaint(p4.x, p4.y, c1, p1.x, p1.y, c2); // top to bottom shading
+        g2d.setPaint(gp);
+        g2d.fillPolygon(xs, ys, 4);
+        g2d.setColor(new Color(0, 0, 0, 20)); g2d.drawPolygon(xs, ys, 4);
     }
 
-    private void drawIsoPolygon(Graphics2D g2d, int ox, int oy, double px, double py, double pz1, double w, double d, double pz2, Color c) {
+    private void drawIsoPolygon(Graphics2D g2d, int ox, int oy, double px, double py, double pz1, double w, double d, double pz2, Color c1, Color c2) {
         int[] xs = new int[4], ys = new int[4];
         Point p1 = getIsoPoint(px, py, pz1, ox, oy);
         Point p2 = getIsoPoint(px + w, py, pz1, ox, oy);
         Point p3 = getIsoPoint(px + w, py + d, pz2, ox, oy);
         Point p4 = getIsoPoint(px, py + d, pz2, ox, oy);
         xs[0]=p1.x; ys[0]=p1.y; xs[1]=p2.x; ys[1]=p2.y; xs[2]=p3.x; ys[2]=p3.y; xs[3]=p4.x; ys[3]=p4.y;
-        g2d.setColor(c); g2d.fillPolygon(xs, ys, 4);
-        g2d.setColor(new Color(0, 0, 0, 60)); g2d.drawPolygon(xs, ys, 4);
+        
+        GradientPaint gp = new GradientPaint(p1.x, p1.y, c1, p3.x, p3.y, c2); // corner to corner shading
+        g2d.setPaint(gp);
+        g2d.fillPolygon(xs, ys, 4);
+        g2d.setColor(new Color(0, 0, 0, 20)); g2d.drawPolygon(xs, ys, 4);
     }
 
     private Point getIsoPoint(double px, double py, double pz, int offsetX, int offsetY) {
