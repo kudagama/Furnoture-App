@@ -15,6 +15,7 @@ public class FurnitureItem implements Serializable {
     public Color color;
     public Color secondaryColor;
     public boolean isSelected = false;
+    public boolean isHovered = false;
     public double rotation = 0; 
     
     public FurnitureItem(String type, int x, int y, int width, int height, Color color) {
@@ -117,6 +118,14 @@ public class FurnitureItem implements Serializable {
             g2d.fillRoundRect(x, y, width, height, 5, 5);
             g2d.setColor(color.darker());
             g2d.drawRoundRect(x, y, width, height, 5, 5);
+        }
+        
+        if (isHovered && !isSelected) {
+            Stroke oldStroke = g2d.getStroke();
+            g2d.setStroke(new BasicStroke(2));
+            g2d.setColor(new Color(50, 150, 255, 180)); 
+            g2d.drawRect(x - 2, y - 2, width + 4, height + 4);
+            g2d.setStroke(oldStroke);
         }
         
         if (isSelected) {

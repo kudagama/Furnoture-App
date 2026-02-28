@@ -147,6 +147,23 @@ public class DesignCanvas extends JPanel {
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
+            public void mouseMoved(MouseEvent e) {
+                if (is3DMode) return;
+                boolean needRepaint = false;
+                boolean foundHover = false;
+                for (int i = items.size() - 1; i >= 0; i--) {
+                    FurnitureItem item = items.get(i);
+                    boolean hover = !foundHover && item.contains(e.getX(), e.getY());
+                    if (hover) foundHover = true;
+                    if (item.isHovered != hover) {
+                        item.isHovered = hover;
+                        needRepaint = true;
+                    }
+                }
+                if (needRepaint) repaint();
+            }
+
+            @Override
             public void mouseDragged(MouseEvent e) {
                 if (selectedItem != null) {
                     if (resizingHandle != 0) {
@@ -168,10 +185,21 @@ public class DesignCanvas extends JPanel {
 
                         double cx = resizeStartX + resizeStartW / 2.0;
                         double cy = resizeStartY + resizeStartH / 2.0;
+                        int nx = (int)(cx - newW / 2.0);
+                        int ny = (int)(cy - newH / 2.0);
+                        
+                        // Bounds checking for resizing
+                        int rw = roomWidthMeters * PIXELS_PER_METER;
+                        int rl = roomLengthMeters * PIXELS_PER_METER;
+                        if (nx < 50) { newW -= (50 - nx); nx = 50; }
+                        if (ny < 50) { newH -= (50 - ny); ny = 50; }
+                        if (nx + newW > 50 + rw) { newW = 50 + rw - nx; }
+                        if (ny + newH > 50 + rl) { newH = 50 + rl - ny; }
+
                         selectedItem.width = newW;
                         selectedItem.height = newH;
-                        selectedItem.x = (int)(cx - newW / 2.0);
-                        selectedItem.y = (int)(cy - newH / 2.0);
+                        selectedItem.x = nx;
+                        selectedItem.y = ny;
                         repaint();
                         return;
                     }
@@ -201,6 +229,19 @@ public class DesignCanvas extends JPanel {
 
                     selectedItem.x = mx - offsetX;
                     selectedItem.y = my - offsetY;
+                    
+                    if (!is3DMode) {
+                        int rw = roomWidthMeters * PIXELS_PER_METER;
+                        int rl = roomLengthMeters * PIXELS_PER_METER;
+                        int rightBound = 50 + rw - selectedItem.width;
+                        int bottomBound = 50 + rl - selectedItem.height;
+                        
+                        if (selectedItem.x < 50) selectedItem.x = 50;
+                        if (selectedItem.y < 50) selectedItem.y = 50;
+                        if (selectedItem.x > rightBound) selectedItem.x = rightBound;
+                        if (selectedItem.y > bottomBound) selectedItem.y = bottomBound;
+                    }
+
                     repaint();
                 }
             }
@@ -216,12 +257,14 @@ public class DesignCanvas extends JPanel {
 
     public void addFurniture(String type) {
         saveStateToUndo();
-        if ("Dining Table".equals(type)) items.add(new FurnitureItem(type, 100, 100, 120, 80, new Color(139, 69, 19)));
-        else if ("Chair".equals(type)) items.add(new FurnitureItem(type, 150, 150, 45, 45, new Color(70, 130, 180)));
-        else if ("Modern Sofa".equals(type)) items.add(new FurnitureItem(type, 200, 100, 160, 70, new Color(105, 105, 105)));
-        else if ("Bed".equals(type)) items.add(new FurnitureItem(type, 300, 100, 140, 180, new Color(160, 82, 45)));
-        else if ("Cabinet".equals(type)) items.add(new FurnitureItem(type, 100, 300, 120, 40, new Color(205, 133, 63)));
-        else if ("Plant".equals(type)) items.add(new FurnitureItem(type, 50, 50, 40, 40, new Color(34, 139, 34)));
+        // default items are placed at x:60, y:60 within bounds
+        int startX = 60, startY = 60;
+        if ("Dining Table".equals(type)) items.add(new FurnitureItem(type, startX, startY, 120, 80, new Color(139, 69, 19)));
+        else if ("Chair".equals(type)) items.add(new FurnitureItem(type, startX, startY, 45, 45, new Color(70, 130, 180)));
+        else if ("Modern Sofa".equals(type)) items.add(new FurnitureItem(type, startX, startY, 160, 70, new Color(105, 105, 105)));
+        else if ("Bed".equals(type)) items.add(new FurnitureItem(type, startX, startY, 140, 180, new Color(160, 82, 45)));
+        else if ("Cabinet".equals(type)) items.add(new FurnitureItem(type, startX, startY, 120, 40, new Color(205, 133, 63)));
+        else if ("Plant".equals(type)) items.add(new FurnitureItem(type, startX, startY, 40, 40, new Color(34, 139, 34)));
         repaint();
     }
 
