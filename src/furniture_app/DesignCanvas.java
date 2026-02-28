@@ -5,6 +5,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class DesignCanvas extends JPanel {
     private ArrayList<FurnitureItem> items = new ArrayList<>();
@@ -13,6 +14,7 @@ public class DesignCanvas extends JPanel {
     private Color wallColor = new Color(245, 245, 250);
     private boolean applyShadows = true;
     private boolean is3DMode = false;
+    private double viewRotation = 0;
     
     public int roomWidthMeters = 10;
     public int roomLengthMeters = 10;
@@ -21,10 +23,28 @@ public class DesignCanvas extends JPanel {
     public DesignCanvas() {
         setBackground(Color.WHITE);
         setBorder(BorderFactory.createEmptyBorder());
+        setFocusable(true);
+        requestFocusInWindow();
+
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (is3DMode) {
+                    if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+                        viewRotation = (viewRotation + 5) % 360;
+                        repaint();
+                    } else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                        viewRotation = (viewRotation - 5 + 360) % 360;
+                        repaint();
+                    }
+                }
+            }
+        });
 
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
+                requestFocusInWindow();
                 int mx = e.getX();
                 int my = e.getY();
                 
@@ -33,8 +53,19 @@ public class DesignCanvas extends JPanel {
                     int oy = getHeight() / 4;
                     double A = (mx - ox) / 0.866;
                     double B = (my - oy) * 2.0;
-                    mx = (int) ((A + B) / 2.0);
-                    my = (int) ((B - A) / 2.0);
+                    double camX = (A + B) / 2.0;
+                    double camY = (B - A) / 2.0;
+                    
+                    double rad = Math.toRadians(-viewRotation);
+                    double cosV = Math.cos(rad);
+                    double sinV = Math.sin(rad);
+                    double rwx = camX * cosV - camY * sinV;
+                    double rwy = camX * sinV + camY * cosV;
+                    
+                    double roomCx = (roomWidthMeters * PIXELS_PER_METER) / 2.0;
+                    double roomCy = (roomLengthMeters * PIXELS_PER_METER) / 2.0;
+                    mx = (int)(rwx + roomCx);
+                    my = (int)(rwy + roomCy);
                 }
 
                 for (int i = items.size() - 1; i >= 0; i--) {
@@ -70,8 +101,19 @@ public class DesignCanvas extends JPanel {
                         int oy = getHeight() / 4;
                         double A = (mx - ox) / 0.866;
                         double B = (my - oy) * 2.0;
-                        mx = (int) ((A + B) / 2.0);
-                        my = (int) ((B - A) / 2.0);
+                        double camX = (A + B) / 2.0;
+                        double camY = (B - A) / 2.0;
+                        
+                        double rad = Math.toRadians(-viewRotation);
+                        double cosV = Math.cos(rad);
+                        double sinV = Math.sin(rad);
+                        double rwx = camX * cosV - camY * sinV;
+                        double rwy = camX * sinV + camY * cosV;
+                        
+                        double roomCx = (roomWidthMeters * PIXELS_PER_METER) / 2.0;
+                        double roomCy = (roomLengthMeters * PIXELS_PER_METER) / 2.0;
+                        mx = (int)(rwx + roomCx);
+                        my = (int)(rwy + roomCy);
                     }
 
                     selectedItem.x = mx - offsetX;
@@ -173,6 +215,8 @@ public class DesignCanvas extends JPanel {
 
         int rw = roomWidthMeters * PIXELS_PER_METER;
         int rl = roomLengthMeters * PIXELS_PER_METER;
+        double roomCx = rw / 2.0;
+        double roomCy = rl / 2.0;
 
         if (is3DMode) {
             GradientPaint gp = new GradientPaint(0, 0, new Color(20, 30, 45), 0, getHeight(), new Color(60, 70, 90));
@@ -182,13 +226,87 @@ public class DesignCanvas extends JPanel {
             int ox = getWidth() / 2;
             int oy = getHeight() / 4;
             
-            drawIsoFloor(g2d, ox, oy, rw, rl);
-
-            items.sort((a, b) -> Integer.compare(a.x + a.y, b.x + b.y));
+            ArrayList<FurnitureItem.Face3D> allFaces = new ArrayList<>();
+            
+            double radView = Math.toRadians(viewRotation);
+            double cosV = Math.cos(radView);
+            double sinV = Math.sin(radView);
+            
+            double[][] floorV = {
+                {0, 0, 0}, {rw, 0, 0}, {rw, rl, 0}, {0, rl, 0}
+            };
+            FurnitureItem.Face3D floorFace = new FurnitureItem.Face3D();
+            floorFace.color = wallColor;
+            double fDepth = 0;
+            for(int j=0; j<4; j++) {
+                double rwx = floorV[j][0] - roomCx;
+                double rwy = floorV[j][1] - roomCy;
+                double camX = rwx * cosV - rwy * sinV;
+                double camY = rwx * sinV + rwy * cosV;
+                floorFace.camX[j] = camX;
+                floorFace.camY[j] = camY;
+                floorFace.camZ[j] = 0;
+                floorFace.isoX[j] = ox + (int)((camX - camY) * 0.866);
+                floorFace.isoY[j] = oy + (int)((camX + camY) * 0.5);
+                fDepth += (camX + camY);
+            }
+            floorFace.depth = fDepth / 4.0;
+            allFaces.add(floorFace);
 
             for (FurnitureItem item : items) {
-                item.draw3D(g2d, ox, oy, applyShadows);
+                allFaces.addAll(item.get3DFaces(ox, oy, roomCx, roomCy, viewRotation));
             }
+            
+            Collections.sort(allFaces);
+            
+            for (FurnitureItem.Face3D f : allFaces) {
+                double cur = (f.isoX[1] - f.isoX[0]) * (f.isoY[2] - f.isoY[1]) - (f.isoY[1] - f.isoY[0]) * (f.isoX[2] - f.isoX[1]);
+                if (cur > 0 || f.color == wallColor) { 
+                    double v1x = f.camX[1] - f.camX[0];
+                    double v1y = f.camY[1] - f.camY[0];
+                    double v1z = f.camZ[1] - f.camZ[0];
+                    double v2x = f.camX[2] - f.camX[0];
+                    double v2y = f.camY[2] - f.camY[0];
+                    double v2z = f.camZ[2] - f.camZ[0];
+
+                    double nx = v1y * v2z - v1z * v2y;
+                    double ny = v1z * v2x - v1x * v2z;
+                    double nz = v1x * v2y - v1y * v2x;
+
+                    double len = Math.sqrt(nx*nx + ny*ny + nz*nz);
+                    if (len > 0) { nx /= len; ny /= len; nz /= len; }
+
+                    double lx = -0.5, ly = -0.5, lz = 1.0; 
+                    double llen = Math.sqrt(lx*lx + ly*ly + lz*lz);
+                    lx /= llen; ly /= llen; lz /= llen;
+
+                    double dot = nx * lx + ny * ly + nz * lz; 
+                    float factor = (float)(0.40 + 0.60 * dot);
+                    if (factor > 1.0f) factor = 1.0f;
+                    if (factor < 0.2f) factor = 0.2f;
+
+                    int r = (int)(f.color.getRed() * factor);
+                    int gCol = (int)(f.color.getGreen() * factor);
+                    int bCol = (int)(f.color.getBlue() * factor);
+                    Color shadeC = new Color(r, gCol, bCol, f.color.getAlpha());
+                    
+                    if (f.isSelected) {
+                        shadeC = new Color((r+255)/2, (gCol+100)/2, (bCol+100)/2, f.color.getAlpha());
+                    }
+                    
+                    g2d.setColor(shadeC);
+                    g2d.fillPolygon(f.isoX, f.isoY, 4);
+                    
+                    if (applyShadows && f.color != wallColor) {
+                        g2d.setColor(new Color(0, 0, 0, 40));
+                        g2d.drawPolygon(f.isoX, f.isoY, 4);
+                    }
+                }
+            }
+
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            g2d.drawString("\u2190 \u2192 Use Left/Right Arrows to rotate 3D view smoothly", 20, 30);
         } else {
             setBackground(new Color(235, 240, 245));
             g2d.setColor(wallColor);
@@ -211,37 +329,5 @@ public class DesignCanvas extends JPanel {
                 item.draw2D(g2d, applyShadows);
             }
         }
-    }
-    
-    private void drawIsoFloor(Graphics2D g2d, int ox, int oy, int w, int d) {
-        int[] xs = new int[4], ys = new int[4];
-        Point p1 = getIsoPoint(0, 0, 0, ox, oy);
-        Point p2 = getIsoPoint(w, 0, 0, ox, oy);
-        Point p3 = getIsoPoint(w, d, 0, ox, oy);
-        Point p4 = getIsoPoint(0, d, 0, ox, oy);
-        xs[0] = p1.x; ys[0] = p1.y; xs[1] = p2.x; ys[1] = p2.y; xs[2] = p3.x; ys[2] = p3.y; xs[3] = p4.x; ys[3] = p4.y;
-        
-        g2d.setColor(wallColor); 
-        g2d.fillPolygon(xs, ys, 4);
-        g2d.setColor(new Color(255, 255, 255, 100)); 
-        g2d.drawPolygon(xs, ys, 4);
-        
-        g2d.setColor(new Color(200, 200, 200, 50));
-        for(int i=0; i<=w; i+=PIXELS_PER_METER) {
-            Point start = getIsoPoint(i, 0, 0, ox, oy);
-            Point end = getIsoPoint(i, d, 0, ox, oy);
-            g2d.drawLine(start.x, start.y, end.x, end.y);
-        }
-        for(int i=0; i<=d; i+=PIXELS_PER_METER) {
-            Point start = getIsoPoint(0, i, 0, ox, oy);
-            Point end = getIsoPoint(w, i, 0, ox, oy);
-            g2d.drawLine(start.x, start.y, end.x, end.y);
-        }
-    }
-
-    private Point getIsoPoint(int px, int py, int pz, int offsetX, int offsetY) {
-        int isoX = offsetX + (int)((px - py) * 0.866);
-        int isoY = offsetY + (px + py) / 2 - pz;
-        return new Point(isoX, isoY);
     }
 }

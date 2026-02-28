@@ -131,78 +131,103 @@ public class FurnitureItem implements Serializable {
         g2d.setTransform(oldTx);
     }
 
-    private class Box3D implements Comparable<Box3D> {
+    public static class Face3D implements Comparable<Face3D> {
+        public double[] camX = new double[4];
+        public double[] camY = new double[4];
+        public double[] camZ = new double[4];
+        public int[] isoX = new int[4];
+        public int[] isoY = new int[4];
+        public Color color;
+        public double depth;
+        public boolean isSelected;
+
+        @Override
+        public int compareTo(Face3D o) {
+            return Double.compare(o.depth, this.depth);
+        }
+    }
+
+    private class Box3D {
         double px, py, pz, w, d, h;
         Color c;
         public Box3D(double px, double py, double pz, double w, double d, double h, Color c) {
             this.px = px; this.py = py; this.pz = pz;
             this.w = w; this.d = d; this.h = h; this.c = c;
         }
-        @Override
-        public int compareTo(Box3D o) {
-            double m1 = (this.px + this.w) + (this.py + this.d) + (this.pz + this.h);
-            double m2 = (o.px + o.w) + (o.py + o.d) + (o.pz + o.h);
-            if (Math.abs(m1 - m2) > 0.01) {
-                return Double.compare(m1, m2);
-            }
-            double min1 = this.px + this.py + this.pz;
-            double min2 = o.px + o.py + o.pz;
-            return Double.compare(min1, min2);
-        }
     }
 
-    public void draw3D(Graphics2D g2d, int offsetX, int offsetY, boolean applyShadows) {
+    public ArrayList<Face3D> get3DFaces(int offsetX, int offsetY, double roomCx, double roomCy, double viewRot) {
         ArrayList<Box3D> parts = new ArrayList<>();
-        double bw = width;
-        double bd = height;
+        buildParts(parts, width, height);
 
-        buildParts(parts, bw, bd);
-
-        // Snap rotation to nearest 90
-        int rot = (int) Math.round(rotation / 90.0) * 90;
-        rot = (rot % 360 + 360) % 360;
-
-        ArrayList<Box3D> rotatedParts = new ArrayList<>();
-        for (Box3D b : parts) {
-            double nx = b.px, ny = b.py, nw = b.w, nd = b.d;
-            if (rot == 90) {
-                nx = -b.py - b.d;
-                ny = b.px;
-                nw = b.d;
-                nd = b.w;
-            } else if (rot == 180) {
-                nx = -b.px - b.w;
-                ny = -b.py - b.d;
-            } else if (rot == 270) {
-                nx = b.py;
-                ny = -b.px - b.w;
-                nw = b.d;
-                nd = b.w;
-            }
-            rotatedParts.add(new Box3D(nx, ny, b.pz, nw, nd, b.h, b.c));
-        }
-
-        // Shift origin to exact center of the bounding box
+        ArrayList<Face3D> faces = new ArrayList<>();
         double cx = x + width / 2.0;
         double cy = y + height / 2.0;
         
-        for (Box3D b : rotatedParts) {
-            b.px += cx;
-            b.py += cy;
-        }
+        double radItem = Math.toRadians(rotation);
+        double cosI = Math.cos(radItem);
+        double sinI = Math.sin(radItem);
+        
+        double radView = Math.toRadians(viewRot);
+        double cosV = Math.cos(radView);
+        double sinV = Math.sin(radView);
 
-        // Apply 3D Painter's Algorithm topological sort!
-        Collections.sort(rotatedParts);
-
-        if (applyShadows) {
-            double shW = (rot == 90 || rot == 270) ? bd : bw;
-            double shD = (rot == 90 || rot == 270) ? bw : bd;
-            drawIsoPolygon(g2d, offsetX, offsetY, cx - shW/2.0, cy - shD/2.0, 0, shW, shD, 0, new Color(0, 0, 0, 60), new Color(0, 0, 0, 10));
+        for (Box3D b : parts) {
+            double[][] v = {
+                {b.px, b.py, b.pz},
+                {b.px + b.w, b.py, b.pz},
+                {b.px + b.w, b.py + b.d, b.pz},
+                {b.px, b.py + b.d, b.pz},
+                {b.px, b.py, b.pz + b.h},
+                {b.px + b.w, b.py, b.pz + b.h},
+                {b.px + b.w, b.py + b.d, b.pz + b.h},
+                {b.px, b.py + b.d, b.pz + b.h}
+            };
+            
+            int[][] fIdx = {
+                {0, 3, 2, 1}, // Bottom
+                {4, 5, 6, 7}, // Top
+                {0, 1, 5, 4}, // Front
+                {1, 2, 6, 5}, // Right
+                {2, 3, 7, 6}, // Back
+                {3, 0, 4, 7}  // Left
+            };
+            
+            for (int i = 0; i < 6; i++) {
+                Face3D face = new Face3D();
+                face.color = b.c;
+                face.isSelected = this.isSelected;
+                double avgDepth = 0;
+                for (int j = 0; j < 4; j++) {
+                    double vx = v[fIdx[i][j]][0];
+                    double vy = v[fIdx[i][j]][1];
+                    double vz = v[fIdx[i][j]][2];
+                    
+                    double rlx = vx * cosI - vy * sinI;
+                    double rly = vx * sinI + vy * cosI;
+                    
+                    double wx = rlx + cx;
+                    double wy = rly + cy;
+                    
+                    double rwx = wx - roomCx;
+                    double rwy = wy - roomCy;
+                    double camX = rwx * cosV - rwy * sinV;
+                    double camY = rwx * sinV + rwy * cosV;
+                    
+                    face.camX[j] = camX;
+                    face.camY[j] = camY;
+                    face.camZ[j] = vz;
+                    
+                    face.isoX[j] = offsetX + (int)((camX - camY) * 0.866);
+                    face.isoY[j] = offsetY + (int)((camX + camY) * 0.5 - vz);
+                    
+                    avgDepth += (camX + camY + (vz * 0.001)); 
+                }
+                face.depth = avgDepth / 4.0;
+                faces.add(face);
+            }
         }
-
-        for (Box3D b : rotatedParts) {
-            drawBoxFaces(g2d, offsetX, offsetY, b);
-        }
+        return faces;
     }
 
     private void buildParts(ArrayList<Box3D> parts, double w, double d) {
@@ -308,67 +333,6 @@ public class FurnitureItem implements Serializable {
         float g = c1.getGreen() * (1 - ratio) + c2.getGreen() * ratio;
         float b = c1.getBlue() * (1 - ratio) + c2.getBlue() * ratio;
         return new Color((int)r, (int)g, (int)b, c1.getAlpha());
-    }
-
-    private void drawBoxFaces(Graphics2D g2d, int ox, int oy, Box3D b) {
-        Color topColor = b.c;
-        Color leftColor = blend(b.c, Color.BLACK, 0.15f);
-        Color rightColor = blend(b.c, Color.BLACK, 0.35f);
-        
-        // Front-left face
-        drawIsoWallX(g2d, ox, oy, b.px, b.py + b.d, b.pz, b.w, b.h, leftColor, blend(leftColor, Color.BLACK, 0.2f));
-        // Front-right face
-        drawIsoWallY(g2d, ox, oy, b.px + b.w, b.py, b.pz, b.d, b.h, rightColor, blend(rightColor, Color.BLACK, 0.2f));
-        // Top face
-        drawIsoPolygon(g2d, ox, oy, b.px, b.py, b.pz + b.h, b.w, b.d, b.pz + b.h, topColor, blend(topColor, Color.WHITE, 0.1f));
-    }
-
-    private void drawIsoWallX(Graphics2D g2d, int ox, int oy, double px, double py, double pz, double w, double h, Color c1, Color c2) {
-        int[] xs = new int[4], ys = new int[4];
-        Point p1 = getIsoPoint(px, py, pz, ox, oy);
-        Point p2 = getIsoPoint(px + w, py, pz, ox, oy);
-        Point p3 = getIsoPoint(px + w, py, pz + h, ox, oy);
-        Point p4 = getIsoPoint(px, py, pz + h, ox, oy);
-        xs[0]=p1.x; ys[0]=p1.y; xs[1]=p2.x; ys[1]=p2.y; xs[2]=p3.x; ys[2]=p3.y; xs[3]=p4.x; ys[3]=p4.y;
-        
-        GradientPaint gp = new GradientPaint(p4.x, p4.y, c1, p2.x, p2.y, c2);
-        g2d.setPaint(gp);
-        g2d.fillPolygon(xs, ys, 4);
-        g2d.setColor(new Color(0, 0, 0, 20)); g2d.drawPolygon(xs, ys, 4);
-    }
-
-    private void drawIsoWallY(Graphics2D g2d, int ox, int oy, double px, double py, double pz, double d, double h, Color c1, Color c2) {
-        int[] xs = new int[4], ys = new int[4];
-        Point p1 = getIsoPoint(px, py, pz, ox, oy);
-        Point p2 = getIsoPoint(px, py + d, pz, ox, oy);
-        Point p3 = getIsoPoint(px, py + d, pz + h, ox, oy);
-        Point p4 = getIsoPoint(px, py, pz + h, ox, oy);
-        xs[0]=p1.x; ys[0]=p1.y; xs[1]=p2.x; ys[1]=p2.y; xs[2]=p3.x; ys[2]=p3.y; xs[3]=p4.x; ys[3]=p4.y;
-        
-        GradientPaint gp = new GradientPaint(p4.x, p4.y, c1, p1.x, p1.y, c2); // top to bottom shading
-        g2d.setPaint(gp);
-        g2d.fillPolygon(xs, ys, 4);
-        g2d.setColor(new Color(0, 0, 0, 20)); g2d.drawPolygon(xs, ys, 4);
-    }
-
-    private void drawIsoPolygon(Graphics2D g2d, int ox, int oy, double px, double py, double pz1, double w, double d, double pz2, Color c1, Color c2) {
-        int[] xs = new int[4], ys = new int[4];
-        Point p1 = getIsoPoint(px, py, pz1, ox, oy);
-        Point p2 = getIsoPoint(px + w, py, pz1, ox, oy);
-        Point p3 = getIsoPoint(px + w, py + d, pz2, ox, oy);
-        Point p4 = getIsoPoint(px, py + d, pz2, ox, oy);
-        xs[0]=p1.x; ys[0]=p1.y; xs[1]=p2.x; ys[1]=p2.y; xs[2]=p3.x; ys[2]=p3.y; xs[3]=p4.x; ys[3]=p4.y;
-        
-        GradientPaint gp = new GradientPaint(p1.x, p1.y, c1, p3.x, p3.y, c2); // corner to corner shading
-        g2d.setPaint(gp);
-        g2d.fillPolygon(xs, ys, 4);
-        g2d.setColor(new Color(0, 0, 0, 20)); g2d.drawPolygon(xs, ys, 4);
-    }
-
-    private Point getIsoPoint(double px, double py, double pz, int offsetX, int offsetY) {
-        int isoX = offsetX + (int)((px - py) * 0.866);
-        int isoY = offsetY + (int)((px + py) / 2.0 - pz);
-        return new Point(isoX, isoY);
     }
 
     public boolean contains(int px, int py) {
