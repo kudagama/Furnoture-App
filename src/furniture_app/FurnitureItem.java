@@ -188,7 +188,7 @@ public class FurnitureItem implements Serializable {
 
         @Override
         public int compareTo(Face3D o) {
-            return Double.compare(o.depth, this.depth);
+            return Double.compare(this.depth, o.depth);
         }
     }
 
@@ -266,7 +266,7 @@ public class FurnitureItem implements Serializable {
                     face.isoX[j] = offsetX + (int)((camX - camY) * 0.866);
                     face.isoY[j] = offsetY + (int)((camX + camY) * 0.5 - vz);
                     
-                    avgDepth += (camX + camY + (vz * 0.001)); 
+                    avgDepth += (camX + camY + (vz * 2.0)); 
                 }
                 face.depth = avgDepth / 4.0;
                 faces.add(face);

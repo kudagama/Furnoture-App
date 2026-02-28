@@ -441,9 +441,8 @@ public class DesignCanvas extends JPanel {
                 floorFace.camZ[j] = 0;
                 floorFace.isoX[j] = ox + (int)((camX - camY) * 0.866);
                 floorFace.isoY[j] = oy + (int)((camX + camY) * 0.5);
-                fDepth += (camX + camY);
             }
-            floorFace.depth = fDepth / 4.0;
+            floorFace.depth = -999999.0;
             allFaces.add(floorFace);
 
             for (FurnitureItem item : items) {
@@ -454,7 +453,7 @@ public class DesignCanvas extends JPanel {
             
             for (FurnitureItem.Face3D f : allFaces) {
                 double cur = (f.isoX[1] - f.isoX[0]) * (f.isoY[2] - f.isoY[1]) - (f.isoY[1] - f.isoY[0]) * (f.isoX[2] - f.isoX[1]);
-                if (cur > 0 || f.color == wallColor) { 
+                if (cur >= 0 || f.color == wallColor) { 
                     double v1x = f.camX[1] - f.camX[0];
                     double v1y = f.camY[1] - f.camY[0];
                     double v1z = f.camZ[1] - f.camZ[0];
