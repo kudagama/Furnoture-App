@@ -284,14 +284,18 @@ public class DashboardPanel extends JPanel {
         
         ModernButton btnSave = new ModernButton("Save", new Color(45, 52, 65), TEXT_MAIN);
         btnSave.addActionListener(e -> {
-            JFileChooser jfc = new JFileChooser();
-            if(jfc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) canvas.saveDesign(jfc.getSelectedFile());
+            String name = JOptionPane.showInputDialog(this, "Enter Design Name to Save:", "Save Design", JOptionPane.PLAIN_MESSAGE);
+            if (name != null && !name.trim().isEmpty()) {
+                canvas.saveDesignToDB(name.trim());
+            }
         });
         
         ModernButton btnLoad = new ModernButton("Load", new Color(45, 52, 65), TEXT_MAIN);
         btnLoad.addActionListener(e -> {
-            JFileChooser jfc = new JFileChooser();
-            if(jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) canvas.loadDesign(jfc.getSelectedFile());
+            String name = JOptionPane.showInputDialog(this, "Enter Design Name to Load:", "Load Design", JOptionPane.PLAIN_MESSAGE);
+            if (name != null && !name.trim().isEmpty()) {
+                canvas.loadDesignFromDB(name.trim());
+            }
         });
         
         ModernButton toggle3D = new ModernButton("RENDER 3D", ACCENT_COL, Color.WHITE);

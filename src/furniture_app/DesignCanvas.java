@@ -109,6 +109,10 @@ public class DesignCanvas extends JPanel {
         }
     }
 
+    public void saveDesignToDB(String designName) {
+        DBConnection.saveDesignToDatabase(designName, items);
+    }
+
     @SuppressWarnings("unchecked")
     public void loadDesign(File file) {
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
@@ -118,6 +122,15 @@ public class DesignCanvas extends JPanel {
             JOptionPane.showMessageDialog(this, "Design Loaded Successfully!", "Loaded", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error Loading: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public void loadDesignFromDB(String designName) {
+        ArrayList<FurnitureItem> loadedItems = DBConnection.loadDesignFromDatabase(designName);
+        if (loadedItems != null && !loadedItems.isEmpty()) {
+            items = loadedItems;
+            selectedItem = null;
+            repaint();
         }
     }
 
