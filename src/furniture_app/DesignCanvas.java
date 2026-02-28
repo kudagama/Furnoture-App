@@ -249,7 +249,7 @@ public class DesignCanvas extends JPanel {
     }
 
     public void saveDesignToDB(String designName) {
-        DBConnection.saveDesignToDatabase(designName, items);
+        DBConnection.saveDesignToDatabase(designName, this);
     }
 
     @SuppressWarnings("unchecked")
@@ -265,14 +265,16 @@ public class DesignCanvas extends JPanel {
     }
 
     public void loadDesignFromDB(String designName) {
-        ArrayList<FurnitureItem> loadedItems = DBConnection.loadDesignFromDatabase(designName);
-        if (loadedItems != null && !loadedItems.isEmpty()) {
+        boolean success = DBConnection.loadDesignFromDatabase(designName, this);
+        if (success) {
             saveStateToUndo();
-            items = loadedItems;
-            selectedItem = null;
-            repaint();
         }
     }
+    
+    public ArrayList<FurnitureItem> getItems() { return items; }
+    public void setItems(ArrayList<FurnitureItem> items) { this.items = items; }
+    public Color getWallColor() { return wallColor; }
+    public boolean isApplyShadows() { return applyShadows; }
 
     public void saveStateToUndo() {
         try {

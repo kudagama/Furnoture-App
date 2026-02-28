@@ -343,10 +343,7 @@ public class DashboardPanel extends JPanel {
                     JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
             
             if (choice == 0) {
-                String name = JOptionPane.showInputDialog(this, "Enter Design Name to Load:", "Load from DB", JOptionPane.PLAIN_MESSAGE);
-                if (name != null && !name.trim().isEmpty()) {
-                    canvas.loadDesignFromDB(name.trim());
-                }
+                showLoadDesignDialog();
             } else if (choice == 1) {
                 JFileChooser jfc = new JFileChooser();
                 if(jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) canvas.loadDesign(jfc.getSelectedFile());
@@ -422,6 +419,73 @@ public class DashboardPanel extends JPanel {
         java.util.Map<java.awt.font.TextAttribute, Object> attributes = new java.util.HashMap<>();
         attributes.put(java.awt.font.TextAttribute.TRACKING, tracking);
         label.setFont(label.getFont().deriveFont(attributes));
+    }
+    private void showLoadDesignDialog() {
+        java.util.List<String> designs = DBConnection.getSavedDesigns();
+        if (designs.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No saved designs found in the database.", "Info", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "Load / Delete Design");
+        dialog.setModal(true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(400, 300);
+        dialog.setLocationRelativeTo(this);
+        dialog.getContentPane().setBackground(PANEL_BG);
+        
+        DefaultListModel<String> model = new DefaultListModel<>();
+        for(String d : designs) model.addElement(d);
+        JList<String> list = new JList<>(model);
+        list.setBackground(new Color(30, 34, 43));
+        list.setForeground(TEXT_MAIN);
+        list.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        list.setSelectionBackground(ACCENT_COL);
+        list.setSelectionForeground(Color.WHITE);
+        
+        JScrollPane scroll = new JScrollPane(list);
+        scroll.setBorder(new EmptyBorder(10, 10, 10, 10));
+        dialog.add(scroll, BorderLayout.CENTER);
+        
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        bottomPanel.setBackground(PANEL_BG);
+        
+        ModernButton btnLoad = new ModernButton("Load", ACCENT_COL, Color.WHITE);
+        ModernButton btnDelete = new ModernButton("Delete", DANGER_COL, Color.WHITE);
+        ModernButton btnCancel = new ModernButton("Cancel", new Color(60, 60, 70), TEXT_MAIN);
+        
+        btnCancel.addActionListener(e -> dialog.dispose());
+        
+        btnLoad.addActionListener(e -> {
+            String selected = list.getSelectedValue();
+            if (selected != null) {
+                canvas.loadDesignFromDB(selected);
+                dialog.dispose();
+            }
+        });
+        
+        btnDelete.addActionListener(e -> {
+            String selected = list.getSelectedValue();
+            if (selected != null) {
+                int confirm = JOptionPane.showConfirmDialog(dialog, "Are you sure you want to permanently delete '" + selected + "'?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    if(DBConnection.deleteDesign(selected)) {
+                        model.removeElement(selected);
+                        JOptionPane.showMessageDialog(dialog, "Design deleted successfully.");
+                    } else {
+                        JOptionPane.showMessageDialog(dialog, "Failed to delete design.");
+                    }
+                }
+            }
+        });
+        
+        bottomPanel.add(btnDelete);
+        bottomPanel.add(Box.createHorizontalStrut(10));
+        bottomPanel.add(btnLoad);
+        bottomPanel.add(btnCancel);
+        
+        dialog.add(bottomPanel, BorderLayout.SOUTH);
+        dialog.setVisible(true);
     }
 
     // --- Custom UI Components ---
