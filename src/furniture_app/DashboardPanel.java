@@ -282,6 +282,14 @@ public class DashboardPanel extends JPanel {
         JPanel rightTopBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         rightTopBar.setOpaque(false);
         
+        ModernButton btnNew = new ModernButton("New", new Color(45, 52, 65), TEXT_MAIN);
+        btnNew.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to start a new design?\nAny unsaved changes will be lost.", "New Design", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                canvas.clearDesign();
+            }
+        });
+        
         ModernButton btnSave = new ModernButton("Save", new Color(45, 52, 65), TEXT_MAIN);
         btnSave.addActionListener(e -> {
             String[] options = {"Database", "Local File"};
@@ -334,6 +342,7 @@ public class DashboardPanel extends JPanel {
         ModernButton btnLogout = new ModernButton("Exit", new Color(60, 20, 30), new Color(255, 100, 100));
         btnLogout.addActionListener(e -> mainFrame.showLogin());
 
+        rightTopBar.add(btnNew);
         rightTopBar.add(btnSave);
         rightTopBar.add(btnLoad);
         

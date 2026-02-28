@@ -100,6 +100,12 @@ public class DesignCanvas extends JPanel {
         }
     }
 
+    public void clearDesign() {
+        items.clear();
+        selectedItem = null;
+        repaint();
+    }
+
     public void saveDesign(File file) {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
             oos.writeObject(items);
